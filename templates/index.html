@@ -56,159 +56,86 @@
 
         ];
 
-        // Функция создания блока — всегда зелёный сверху с округлыми углами
+        // Палитра из референса
+        const colors = {
+            dirt: 0x8d5b4c,
+            grass: 0x76c760,
+            grassLight: 0xa1d95d,
+            patch: 0xdcf09d
+        };
+
         function createGreenBlock(x, z) {
             const group = new THREE.Group();
 
             const height = 1.8;
             const size = 2;
-            const radius = 0.3; // Радиус скругления
+            const radius = 0.4; // Чуть больше для мягкости
 
-            // Создаем форму с округлыми углами
+            // Общая форма (Rounded Rectangle)
             const shape = new THREE.Shape();
-            const width = size - radius * 2;
-            const depth = size - radius * 2;
+            const w = size - radius * 2;
+            shape.moveTo(-w / 2, -w / 2 - radius);
+            shape.lineTo(w / 2, -w / 2 - radius);
+            shape.absarc(w / 2, -w / 2, radius, -Math.PI / 2, 0, false);
+            shape.lineTo(w / 2 + radius, w / 2);
+            shape.absarc(w / 2, w / 2, radius, 0, Math.PI / 2, false);
+            shape.lineTo(-w / 2, w / 2 + radius);
+            shape.absarc(-w / 2, w / 2, radius, Math.PI / 2, Math.PI, false);
+            shape.lineTo(-w / 2 - radius, -w / 2);
+            shape.absarc(-w / 2, -w / 2, radius, Math.PI, Math.PI * 1.5, false);
 
-            shape.moveTo(-width / 2, -depth / 2 - radius);
-            shape.lineTo(width / 2, -depth / 2 - radius);
-            shape.absarc(width / 2, -depth / 2, radius, -Math.PI / 2, 0, false);
-            shape.lineTo(width / 2 + radius, depth / 2);
-            shape.absarc(width / 2, depth / 2, radius, 0, Math.PI / 2, false);
-            shape.lineTo(-width / 2, depth / 2 + radius);
-            shape.absarc(-width / 2, depth / 2, radius, Math.PI / 2, Math.PI, false);
-            shape.lineTo(-width / 2 - radius, -depth / 2);
-            shape.absarc(-width / 2, -depth / 2, radius, Math.PI, Math.PI * 1.5, false);
+            const extrudeSettings = { depth: height, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05, bevelSegments: 3 };
 
-            const extrudeSettings = {
-                steps: 1,
-                depth: height,
-                bevelEnabled: true,
-                bevelThickness: 0.05,
-                bevelSize: 0.05,
-                bevelOffset: 0,
-                bevelSegments: 3
-            };
+            // 1. Коричневое основание (земля)
+            const dirtGeo = new THREE.ExtrudeGeometry(shape, { ...extrudeSettings, depth: height * 0.7 });
+            dirtGeo.rotateX(Math.PI / 2);
+            const dirtMat = new THREE.MeshStandardMaterial({ color: colors.dirt, roughness: 0.9 });
+            const dirtBase = new THREE.Mesh(dirtGeo, dirtMat);
+            dirtBase.castShadow = true;
+            dirtBase.receiveShadow = true;
+            dirtBase.position.y = height * 0.35;
+            group.add(dirtBase);
 
-            const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-            geo.rotateX(Math.PI / 2); // Поворачиваем, чтобы глубина шла вверх/вниз
+            // 2. Зеленая шапка (трава)
+            const grassGeo = new THREE.ExtrudeGeometry(shape, { ...extrudeSettings, depth: height * 0.4 });
+            grassGeo.rotateX(Math.PI / 2);
+            const grassMat = new THREE.MeshStandardMaterial({ color: colors.grass, roughness: 0.8 });
+            const grassCap = new THREE.Mesh(grassGeo, grassMat);
+            grassCap.castShadow = true;
+            grassCap.receiveShadow = true;
+            grassCap.position.y = height * 0.8; // Чуть выше середины
+            group.add(grassCap);
 
-            // Случайный зелёный цвет для верха
-            const topColor = greenShades[Math.floor(Math.random() * greenShades.length)];
+            // 3. Капли (Drips) - добавляем 1-2 случайные капли на бока
+            if (Math.random() > 0.3) {
+                const numDrips = Math.floor(Math.random() * 2) + 1;
+                for (let i = 0; i < numDrips; i++) {
+                    const dripGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.5, 12);
+                    const dripSphere = new THREE.SphereGeometry(0.15, 12, 12);
 
-            const matTop = new THREE.MeshStandardMaterial({
-                color: topColor,
-                roughness: 0.8
-            });
+                    const dripGroup = new THREE.Group();
+                    const mainDrip = new THREE.Mesh(dripGeo, grassMat);
+                    const bottomDrip = new THREE.Mesh(dripSphere, grassMat);
+                    bottomDrip.position.y = -0.25;
+                    dripGroup.add(mainDrip, bottomDrip);
 
-            const matSide = new THREE.MeshStandardMaterial({
-                color: 0x8b5a2b, // коричневая земля
-                roughness: 0.9
-            });
+                    // Позиция на одной из сторон
+                    const side = Math.floor(Math.random() * 4);
+                    const offset = (Math.random() - 0.5) * 1.2;
+                    if (side === 0) dripGroup.position.set(offset, 1.2, 0.95);
+                    if (side === 1) dripGroup.position.set(offset, 1.2, -0.95);
+                    if (side === 2) dripGroup.position.set(0.95, 1.2, offset);
+                    if (side === 3) dripGroup.position.set(-0.95, 1.2, offset);
 
-            // Для ExtrudeGeometry массив материалов: [крышка/дно, бока]
-            const block = new THREE.Mesh(geo, [matTop, matSide]);
-            block.castShadow = true;
-            block.receiveShadow = true;
+                    group.add(dripGroup);
+                }
+            }
 
-            // Смещение по Y, так как ExtrudeGeometry выдавливает в одну сторону
-            block.position.y = height / 2;
 
-            group.add(block);
+
             group.position.set(x * 2.05, 0, z * 2.05);
             scene.add(group);
             return group;
-        }
-
-        // Функция создания сруба (бревенчатого дома)
-        function createLogHouse(x, z) {
-            const houseGroup = new THREE.Group();
-
-            const logRadius = 0.25;
-            const logLength = 6;
-            const logMat = new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 0.9 }); // Коричневый цвет бревен
-
-            // Стены из бревен
-            for (let i = 0; i < 8; i++) {
-                const y = i * logRadius * 1.6 + 1.0; // Высота над платформой (блока 1.8 высотой, y=0 в центре, т.е. верх на 0.9 + бревна)
-
-                // Передняя и задняя стены
-                const log1 = new THREE.Mesh(new THREE.CylinderGeometry(logRadius, logRadius, logLength), logMat);
-                log1.rotation.z = Math.PI / 2;
-                log1.position.set(0, y, logLength / 2 - logRadius);
-                log1.castShadow = true;
-                log1.receiveShadow = true;
-                houseGroup.add(log1);
-
-                const log2 = log1.clone();
-                log2.position.z = -(logLength / 2 - logRadius);
-                houseGroup.add(log2);
-
-                // Боковые стены (чуть смещены по высоте для эффекта перехлеста)
-                const ySide = y + logRadius * 0.8;
-                const log3 = new THREE.Mesh(new THREE.CylinderGeometry(logRadius, logRadius, logLength), logMat);
-                log3.rotation.x = Math.PI / 2;
-                log3.position.set(logLength / 2 - logRadius, ySide, 0);
-                log3.castShadow = true;
-                log3.receiveShadow = true;
-                houseGroup.add(log3);
-
-                const log4 = log3.clone();
-                log4.position.set(-(logLength / 2 - logRadius), ySide, 0);
-                houseGroup.add(log4);
-            }
-
-            // Крыша (двускатная)
-            const roofMat = new THREE.MeshStandardMaterial({ color: 0x4e342e, roughness: 0.8 });
-            const roofWidth = 5;
-            const roofHeight = 0.2;
-            const roofDepth = 6.5; // Чуть длиннее дома
-            const roofGeo = new THREE.BoxGeometry(roofWidth, roofHeight, roofDepth);
-
-            const roofLeft = new THREE.Mesh(roofGeo, roofMat);
-            roofLeft.rotation.z = Math.PI / 4; // 45 градусов
-            roofLeft.position.set(-1.6, 4.5, 0);
-            roofLeft.castShadow = true;
-            houseGroup.add(roofLeft);
-
-            const roofRight = new THREE.Mesh(roofGeo, roofMat);
-            roofRight.rotation.z = -Math.PI / 4;
-            roofRight.position.set(1.6, 4.5, 0);
-            roofRight.castShadow = true;
-            houseGroup.add(roofRight);
-
-            // Фронтоны (треугольники под крышей)
-            const gableShape = new THREE.Shape();
-            gableShape.moveTo(-logLength / 2 + logRadius, 3.2);
-            gableShape.lineTo(logLength / 2 - logRadius, 3.2);
-            gableShape.lineTo(0, 4.8);
-            gableShape.lineTo(-logLength / 2 + logRadius, 3.2);
-
-            const gableGeo = new THREE.ShapeGeometry(gableShape);
-            const frontGable = new THREE.Mesh(gableGeo, logMat);
-            frontGable.position.z = logLength / 2 - logRadius - 0.01;
-            houseGroup.add(frontGable);
-
-            const backGable = frontGable.clone();
-            backGable.position.z = -(logLength / 2 - logRadius - 0.01);
-            houseGroup.add(backGable);
-
-            // Дверь
-            const doorGeo = new THREE.PlaneGeometry(1.2, 2);
-            const doorMat = new THREE.MeshStandardMaterial({ color: 0x3e2723 });
-            const door = new THREE.Mesh(doorGeo, doorMat);
-            door.position.set(0, 2, logLength / 2 - logRadius + 0.1);
-            houseGroup.add(door);
-
-            // Окно
-            const windowGeo = new THREE.PlaneGeometry(1, 1);
-            const windowMat = new THREE.MeshStandardMaterial({ color: 0x81d4fa, emissive: 0x0277bd });
-            const windowMesh = new THREE.Mesh(windowGeo, windowMat);
-            windowMesh.position.set(logLength / 2 - logRadius + 0.1, 2.5, 0);
-            windowMesh.rotation.y = Math.PI / 2;
-            houseGroup.add(windowMesh);
-
-            houseGroup.position.set(x * 2.05, 0, z * 2.05);
-            scene.add(houseGroup);
         }
 
         // Создаём уровень — ТОЛЬКО зелёные блоки
@@ -221,9 +148,6 @@
                 tiles.push(tile);
             }
         }
-
-        // Ставим дом по центру
-        createLogHouse(0, 0);
 
         // Анимация (пока без капель, чтобы не сломать)
         function animate() {
