@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Isometric Green Top Blocks</title>
+  <style>
+    body { margin:0; overflow:hidden; background:#a0d8ff; }
+  </style>
+</head>
+<body>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/controls/OrbitControls.js"></script>
+
+<script>
+// Сцена
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xa0d8ff);
+
+// Камера (изометрия)
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 300);
+camera.position.set(20, 28, 36);
+
+// Рендерер
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+// Контролы
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.12;
+
+// Свет
+scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 1.4);
+sun.position.set(40, 60, 50);
+sun.castShadow = true;
+scene.add(sun);
+
+// Цвета
+const TOP_GREEN   = 0x56cc66;   // основной зелёный верх
+const SIDE_BROWN  = 0x8b5a2b;   // коричневые бока и низ
+
+// Функция создания одного блока
+function createBlock(x, z) {
+  const group = new THREE.Group();
+  const height = 1.8;
+  const geo = new THREE.BoxGeometry(2, height, 2);
+
+  const matTop = new THREE.MeshStandardMaterial({
+    color: TOP_GREEN,
+    roughness: 0.8
+  });
+
+  const matSide = new THREE.MeshStandardMaterial({
+    color: SIDE_BROWN,
+    roughness: 0.9
+  });
+
+  const block = new THREE.Mesh(geo, [
+    matSide, matSide, matTop, matSide, matSide, matSide
+  ]);
+
+  block.castShadow = true;
+  block.receiveShadow = true;
+  group.add(block);
+
+  group.position.set(x * 2.05, 0, z * 2.05);
+  scene.add(group);
+}
+
+// Создаём сетку блоков
+for (let x = -8; x <= 8; x++) {
+  for (let z = -8; z <= 8; z++) {
+    if (Math.abs(x) + Math.abs(z) > 12) continue; // слегка овальная форма, как на фото
+    createBlock(x, z);
+  }
+}
+
+// Анимация
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+animate();
+
+// Адаптация размера
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
