@@ -1,0 +1,73 @@
+body {
+    margin: 0;
+    overflow: hidden;
+    /* Prevent scrollbars */
+}
+
+canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+}
+
+#ui-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    /* Let clicks pass through to canvas */
+    padding: 20px;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.hud-top {
+    display: flex;
+    gap: 20px;
+    font-size: 24px;
+}
+
+.stat {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 10px 15px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+.mission-box {
+    position: absolute;
+    top: 100px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 15px;
+    border-radius: 10px;
+    max-width: 250px;
+    backdrop-filter: blur(5px);
+}
+
+.mission-box h3 {
+    margin: 0 0 5px 0;
+    font-size: 18px;
+    color: #ffd700;
+}
+
+.mission-box p {
+    margin: 0;
+    font-size: 16px;
+}
+
+.controls-hint {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.5);
+    padding: 10px 20px;
+    border-radius: 20px;
+}

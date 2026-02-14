@@ -1,0 +1,183 @@
+/**
+ * Three.js Game Engine - Green Blocks Edition
+ */
+
+let scene, camera, renderer, raycaster, mouse, controls;
+let tiles = [];
+let interactiveObjects = [];
+let gameData = null;
+
+const SPACING = 2.05;
+
+// Все возможные оттенки зелёного
+const greenShades = [
+    0xaaffaa, 0x99ff99, 0x88ee88, 0x77dd77, 0x66cc66,
+    0x55bb55, 0x9affbb, 0xbbffcc, 0x44aa44, 0x88ff88
+];
+
+function init() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xa0d8ff);
+
+    // Perspective Camera
+    camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 300);
+    camera.position.set(18, 24, 32);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    // OrbitControls
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.1;
+
+    // Lights
+    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.3);
+    dirLight.position.set(30, 50, 40);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    raycaster = new THREE.Raycaster();
+    mouse = new THREE.Vector2();
+
+    window.addEventListener('click', onMouseClick, false);
+    window.addEventListener('resize', onWindowResize, false);
+
+    loadLevel();
+    animate();
+}
+
+async function loadLevel() {
+    try {
+        const response = await fetch('/api/level');
+        const json = await response.json();
+        gameData = json.updated_scene;
+        buildGrid(gameData.grid);
+        addObjects(gameData.objects);
+    } catch (e) {
+        console.error("Failed to load level:", e);
+    }
+}
+
+function createGreenBlock(x, z, typeData) {
+    const group = new THREE.Group();
+    const height = 1.8;
+    const geo = new THREE.BoxGeometry(2, height, 2);
+
+    // Случайный зелёный цвет для верха
+    const topColor = greenShades[Math.floor(Math.random() * greenShades.length)];
+
+    const matTop = new THREE.MeshStandardMaterial({
+        color: topColor,
+        roughness: 0.8
+    });
+
+    const matSide = new THREE.MeshStandardMaterial({
+        color: 0x8b5a2b, // коричневая земля по бокам и снизу
+        roughness: 0.9
+    });
+
+    const block = new THREE.Mesh(geo, [
+        matSide, matSide, matTop, matSide, matSide, matSide
+    ]);
+    block.castShadow = true;
+    block.receiveShadow = true;
+
+    block.userData = { type: typeData.type, interactions: typeData.interactions };
+    group.add(block);
+
+    group.position.set(x * SPACING, 0, z * SPACING);
+    scene.add(group);
+    return group;
+}
+
+function buildGrid(gridData) {
+    gridData.tiles.forEach(tileType => {
+        tileType.positions.forEach(pos => {
+            const tile = createGreenBlock(pos[0] - 5, pos[1] - 4, tileType);
+            tiles.push(tile);
+        });
+    });
+}
+
+function addObjects(objects) {
+    objects.forEach(obj => {
+        let geometry, material;
+        if (obj.type === 'temple') {
+            geometry = new THREE.BoxGeometry(2, 2, 2);
+            material = new THREE.MeshPhongMaterial({ color: 0xFFFFFF });
+        } else if (obj.type === 'tree') {
+            geometry = new THREE.CylinderGeometry(0.2, 0.8, 1.5);
+            material = new THREE.MeshLambertMaterial({ color: 0x408020 });
+        } else if (obj.type === 'coins' || obj.type === 'coin') {
+            geometry = new THREE.SphereGeometry(0.3);
+            material = new THREE.MeshStandardMaterial({ color: 0xFFAA00 });
+        } else {
+            geometry = new THREE.SphereGeometry(0.3);
+            material = new THREE.MeshStandardMaterial({ color: 0xAAAAAA });
+        }
+
+        const locations = obj.positions || (obj.position ? [obj.position] : []);
+        locations.forEach(pos => {
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set((pos[0] - 5) * SPACING, 1.5, (pos[1] - 4) * SPACING);
+            mesh.scale.set(obj.scale || 1, obj.scale || 1, obj.scale || 1);
+            mesh.userData = { id: obj.id, type: obj.type, interactions: obj.interactions };
+            mesh.castShadow = true;
+
+            scene.add(mesh);
+            interactiveObjects.push(mesh);
+        });
+    });
+}
+
+function onMouseClick(event) {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(interactiveObjects);
+
+    if (intersects.length > 0) {
+        const obj = intersects[0].object;
+        console.log("Interacted with:", obj.userData.type);
+        handleInteraction(obj.userData);
+    }
+}
+
+async function handleInteraction(data) {
+    const response = await fetch('/api/interact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: data.id, type: data.type })
+    });
+    const result = await response.json();
+    alert(`Interaction: ${data.id} - Status: ${result.status}`);
+}
+
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    if (controls) controls.update();
+
+    // Simple object animations
+    interactiveObjects.forEach(obj => {
+        if (obj.userData.type === 'tree') {
+            obj.rotation.z = Math.sin(Date.now() * 0.002) * 0.02;
+        } else if (obj.userData.type === 'coins') {
+            obj.rotation.y += 0.05;
+        }
+    });
+
+    renderer.render(scene, camera);
+}
+
+init();
