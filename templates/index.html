@@ -3,168 +3,80 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Isometric All Green Blocks</title>
+    <title>Isometric Adventure - Modular Edition</title>
+    <link rel="stylesheet" href="/assets/css/ui.css">
     <style>
         body {
             margin: 0;
             overflow: hidden;
             background: #a0d8ff;
         }
+
+        canvas {
+            display: block;
+        }
     </style>
 </head>
 
 <body>
 
+    <!-- UI Overlay -->
+    <div id="ui-container">
+        <!-- Coin Counter -->
+        <div class="coin-counter ui-btn" onclick="triggerEvent('coins')">
+            <div class="coin-icon"></div>
+            <div class="coin-value">259</div>
+        </div>
+
+        <!-- Menu Button -->
+        <div class="menu-btn ui-btn" onclick="triggerEvent('menu')">
+            <div class="menu-line"></div>
+            <div class="menu-line"></div>
+            <div class="menu-line"></div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-container">
+            <div class="hearts">
+                <div class="heart ui-btn" onclick="triggerEvent('heal')"></div>
+                <div class="heart empty ui-btn" onclick="triggerEvent('revive')"></div>
+            </div>
+            <div class="bars">
+                <div class="bar-bg">
+                    <div class="bar-fill green"></div>
+                </div>
+                <div class="bar-bg">
+                    <div class="bar-fill orange"></div>
+                </div>
+                <div class="bar-bg">
+                    <div class="bar-fill half"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quest Panel -->
+        <div class="quest-panel ui-btn" onclick="triggerEvent('quest')">
+            <div class="quest-tag">Quest</div>
+            <div class="quest-content">
+                <div class="quest-arrow"></div>
+                <div class="quest-text">
+                    <div class="quest-line">Look for ways to go and</div>
+                    <div class="quest-line">defeat Sir Booble!</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Core Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/controls/OrbitControls.js"></script>
 
-    <script>
-        // Сцена
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xa0d8ff);
-
-        // Камера
-        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 300);
-        camera.position.set(18, 24, 32);
-
-        // Рендерер
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        document.body.appendChild(renderer.domElement);
-
-        // Контролы
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.1;
-
-        // Свет
-        scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1.3);
-        dirLight.position.set(30, 50, 40);
-        dirLight.castShadow = true;
-        scene.add(dirLight);
-
-        // Все возможные оттенки зелёного
-        const greenShades = [
-            // светло-зелёный
-            // насыщенный
-            0x66cc66,  // тёмно-зелёный
-            0x55bb55,  // глубокий
-            0x9affbb,  // с лёгкой голубизной
-            // очень светлый
-
-        ];
-
-        // Палитра из референса
-        const colors = {
-            dirt: 0x8d5b4c,
-            grass: 0x76c760,
-            grassLight: 0xa1d95d,
-            patch: 0xdcf09d
-        };
-
-        function createGreenBlock(x, z) {
-            const group = new THREE.Group();
-
-            const height = 1.8;
-            const size = 2;
-            const radius = 0.4; // Чуть больше для мягкости
-
-            // Общая форма (Rounded Rectangle)
-            const shape = new THREE.Shape();
-            const w = size - radius * 2;
-            shape.moveTo(-w / 2, -w / 2 - radius);
-            shape.lineTo(w / 2, -w / 2 - radius);
-            shape.absarc(w / 2, -w / 2, radius, -Math.PI / 2, 0, false);
-            shape.lineTo(w / 2 + radius, w / 2);
-            shape.absarc(w / 2, w / 2, radius, 0, Math.PI / 2, false);
-            shape.lineTo(-w / 2, w / 2 + radius);
-            shape.absarc(-w / 2, w / 2, radius, Math.PI / 2, Math.PI, false);
-            shape.lineTo(-w / 2 - radius, -w / 2);
-            shape.absarc(-w / 2, -w / 2, radius, Math.PI, Math.PI * 1.5, false);
-
-            const extrudeSettings = { depth: height, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05, bevelSegments: 3 };
-
-            // 1. Коричневое основание (земля)
-            const dirtGeo = new THREE.ExtrudeGeometry(shape, { ...extrudeSettings, depth: height * 0.7 });
-            dirtGeo.rotateX(Math.PI / 2);
-            const dirtMat = new THREE.MeshStandardMaterial({ color: colors.dirt, roughness: 0.9 });
-            const dirtBase = new THREE.Mesh(dirtGeo, dirtMat);
-            dirtBase.castShadow = true;
-            dirtBase.receiveShadow = true;
-            dirtBase.position.y = height * 0.35;
-            group.add(dirtBase);
-
-            // 2. Зеленая шапка (трава)
-            const grassGeo = new THREE.ExtrudeGeometry(shape, { ...extrudeSettings, depth: height * 0.4 });
-            grassGeo.rotateX(Math.PI / 2);
-            const grassMat = new THREE.MeshStandardMaterial({ color: colors.grass, roughness: 0.8 });
-            const grassCap = new THREE.Mesh(grassGeo, grassMat);
-            grassCap.castShadow = true;
-            grassCap.receiveShadow = true;
-            grassCap.position.y = height * 0.8; // Чуть выше середины
-            group.add(grassCap);
-
-            // 3. Капли (Drips) - добавляем 1-2 случайные капли на бока
-            if (Math.random() > 0.3) {
-                const numDrips = Math.floor(Math.random() * 2) + 1;
-                for (let i = 0; i < numDrips; i++) {
-                    const dripGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.5, 12);
-                    const dripSphere = new THREE.SphereGeometry(0.15, 12, 12);
-
-                    const dripGroup = new THREE.Group();
-                    const mainDrip = new THREE.Mesh(dripGeo, grassMat);
-                    const bottomDrip = new THREE.Mesh(dripSphere, grassMat);
-                    bottomDrip.position.y = -0.25;
-                    dripGroup.add(mainDrip, bottomDrip);
-
-                    // Позиция на одной из сторон
-                    const side = Math.floor(Math.random() * 4);
-                    const offset = (Math.random() - 0.5) * 1.2;
-                    if (side === 0) dripGroup.position.set(offset, 1.2, 0.95);
-                    if (side === 1) dripGroup.position.set(offset, 1.2, -0.95);
-                    if (side === 2) dripGroup.position.set(0.95, 1.2, offset);
-                    if (side === 3) dripGroup.position.set(-0.95, 1.2, offset);
-
-                    group.add(dripGroup);
-                }
-            }
-
-
-
-            group.position.set(x * 2.05, 0, z * 2.05);
-            scene.add(group);
-            return group;
-        }
-
-        // Создаём уровень — ТОЛЬКО зелёные блоки
-        const tiles = [];
-        for (let x = -5; x <= 5; x++) {
-            for (let z = -5; z <= 5; z++) {
-                if (Math.abs(x) + Math.abs(z) > 8) continue;
-
-                const tile = createGreenBlock(x, z);
-                tiles.push(tile);
-            }
-        }
-
-        // Анимация (пока без капель, чтобы не сломать)
-        function animate() {
-            requestAnimationFrame(animate);
-            controls.update();
-            renderer.render(scene, camera);
-        }
-
-        animate();
-
-        // Адаптация размера окна
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-    </script>
+    <!-- Game Modules -->
+    <script src="/assets/js/constants.js"></script>
+    <script src="/assets/js/models/Tile.js"></script>
+    <script src="/assets/js/models/Decor.js"></script>
+    <script src="/assets/js/models/Char.js"></script>
+    <script src="/assets/js/main.js"></script>
 </body>
 
 </html>
